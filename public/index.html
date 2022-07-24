@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spotify Helper</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="app.js"></script>
+</head>
+  <body onload="onPageLoad()">
+    <div id='container' class="container">
+        <div class="col">
+            <div class='inputBox'>
+                <label for="clientId" class="form-label">Client ID </label>
+                <input type="text" class="form-control" id="clientId" placeholder="">
+            </div>
+            <div class='inputBox'>
+                <label for="clientSecret" class="form-label">Client Secret</label>
+                <input type="text" class="form-control" id="clientSecret" placeholder="">
+            </div>
+            <div class="inputBox">
+              <label for="playlists" class="form-label">Playlists</label>
+              <select id="playlists" class="form-control">
+              </select>
+              <input class="button" type="button" onclick="refreshPlaylists()" value="Refresh Playlists">
+
+            <input class="button" type="button" onclick="requestAuthorization()" value="Request Authorization">
+        </div>
+    </div>
+  </body>
+</html>
+

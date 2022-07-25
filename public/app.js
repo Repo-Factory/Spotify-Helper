@@ -1,15 +1,20 @@
 var client_id = 'b6d3067e6472428abf71eb27213a2ca4';
 var client_secret = 'cf7ebd54374644ce9591f3675277ff2e';
 var redirect_uri = 'http://172.26.50.242:5500';
-var scope = 'playlist-read-private';
+var scope = 'playlist-read-private playlist-read-collaborative playlist-modify-public user-library-read';
 var access_token = null;
 var refresh_token = null;
 
 const authUrl = 'https://accounts.spotify.com/authorize';
 const tokenUrl = 'https://accounts.spotify.com/api/token';
-const playlistUrl = 'https://api.spotify.com/v1/me/playlists';
-const tracksUrl = '	https://api.spotify.com/v1/playlists/{playlist_id}/tracks';
+const playlistUrl = 'https://api.spotify.com/v1/me/playlists?limit=50';
+const tracksUrl = 'https://api.spotify.com/v1/playlists/{playlist_id}/tracks';
 
+
+var playlistIds = [];
+
+
+///////////////////////AUTHORIZE///////////////////////////
 
 // executed on form submission, sends request to spotify authorize URL
 function requestAuthorization() {
@@ -32,12 +37,29 @@ function onPageLoad() {
             document.getElementById("container").style.display = 'block';
         }
         else {
+                fetch('http://localhost:5500/songs', {
+                method: 'DELETE',
+                })
                 getPlaylists();
+                //setTimeout(() => {testPopulate();}, 8000);
+                setTimeout(() => {populateSongs();}, 4000);
         }
        
     }
 }
 
+
+//function testPopulate() {
+   // songname = 'fuck me babe'
+   // songid = 'dfgherty'
+   // const playlistDetails = {songname, songid};
+   // request = fetch ('http://localhost:5500/songs/id?id=6PWSEAWhrOnaXBDd5zAUQ8', {
+    //    method: 'POST',
+    //    headers: {'Content-Type': 'application/json'},
+    //    body: JSON.stringify(Object.values(playlistDetails)),
+    //    })
+  //  console.log(JSON.stringify(Object.values(playlistDetails)))
+//}
 
 //cleans URL and requests access token
 function handleRedirect() {
@@ -108,6 +130,8 @@ function callApi(method, url, body, callback) {
 }
 
 
+///////////////////////////////PLAYLISTS/////////////////////////////////////
+
 
 function getPlaylists() {
     callApi('GET', playlistUrl, null, handlePlaylistResponse);
@@ -115,6 +139,7 @@ function getPlaylists() {
 
 
 function handlePlaylistResponse() {
+    
     fetch('http://localhost:5500/playlists', {
         method: 'DELETE',
         })
@@ -130,46 +155,100 @@ function handlePlaylistResponse() {
         console.log(this.responseText);
         alert(this.responseText);
     }
+    console.log(playlistIds)
 }
 
-
-function doPlaylist(item) {
-    console.log(item);
-    addPlaylist(item);
-    postPlaylist(item);
-}
 
 function addPlaylist(item) {
     let node = document.createElement("option");
     node.value = item.id;
-    node.innerHTML = item.name + " (" + item.tracks.total + ")";
+    node.innerHTML = item.name + " ("+ item.tracks.total +")";
     document.getElementById("playlists").appendChild(node); 
 }
 
 function postPlaylist(item) {
     title = item.name
     tracks = item.tracks.total
-    const playlistDetails = {title, tracks};
-    console.log('shity shit shit ' + Object.values(playlistDetails))
+    spotifyId = item.id
+    const playlistDetails = {title, tracks, spotifyId};
     request = fetch('http://localhost:5500/playlists', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(Object.values(playlistDetails)),
         })
-    console.log(playlistDetails);
-    console.log('large crapshoot' + JSON.stringify(Object.values(playlistDetails)))
-    console.log(request);
+    console.log(JSON.stringify(Object.values(playlistDetails)))
 }
-   
+ 
 
-function get_values(json) {
-    let values = []
-    JSON.parse(json, (key,value)=>{ values.push(value) })
-    return values
- }
+function storePlaylistsId(item) {
+    playlistId = item.id;
+    playlistIds.push(playlistId);
+}
 
 
-//helpers
+
+function doPlaylist(item) {
+    console.log(item);
+    storePlaylistsId(item);
+    addPlaylist(item);
+    postPlaylist(item);
+}
+
+
+//////////////////////////////SONGS////////////////////////////////
+
+
+
+function populateSongs() {
+    for (i=0; i < playlistIds.length; i++) {
+        callApi('GET', `https://api.spotify.com/v1/playlists/${playlistIds[i]}/tracks`, null, handleSongResponse);
+    }
+}
+
+
+function handleSongResponse() {
+    console.log(this);
+    var url = this.responseURL;
+    console.log(this.responseURL)
+    console.log(url);
+    url = url.split('playlists/');
+    console.log(url)
+    url = url[1].split('/');
+    console.log(url)
+    url = url[0];
+    console.log(url)
+
+    if (this.status == 200) {
+        var data = JSON.parse(this.responseText);
+        console.log(data);
+        console.log(url)
+        data.items.forEach(item => postSong(item, url));
+    }
+    else if ( this.status == 401 ){
+        refreshAccessToken()
+    }
+    else {
+        console.log(this.responseText);
+        alert(this.responseText);
+    }
+}
+
+
+function postSong(item, url) {
+    songname = item.track.name
+    songid = item.track.id
+    id = url
+    const playlistDetails = {songname, songid, id};
+    request = fetch('http://localhost:5500/songs', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(Object.values(playlistDetails)),
+        })
+    console.log(JSON.stringify(Object.values(playlistDetails)))
+}
+
+
+/////////////////////////HELPERS////////////////////////////////
 function getFormData() {
     client_id = document.getElementById('clientId').value;
     client_secret = document.getElementById('clientSecret').value;

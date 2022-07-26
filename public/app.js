@@ -1,7 +1,7 @@
 var client_id = 'b6d3067e6472428abf71eb27213a2ca4';
 var client_secret = 'cf7ebd54374644ce9591f3675277ff2e';
 var redirect_uri = 'http://172.26.50.242:5500';
-var scope = 'playlist-read-private playlist-read-collaborative playlist-modify-public user-library-read';
+var scope = 'playlist-read-private playlist-read-collaborative playlist-modify-public playlist-modify-private user-library-read';
 var access_token = null;
 var refresh_token = null;
 
@@ -12,6 +12,7 @@ const tracksUrl = 'https://api.spotify.com/v1/playlists/{playlist_id}/tracks';
 
 
 var playlistIds = [];
+var songsToBeAdded = []
 
 
 ///////////////////////AUTHORIZE///////////////////////////
@@ -129,7 +130,114 @@ function callApi(method, url, body, callback) {
     request.onload = callback;
 }
 
+function callApiJSON(method, url, body, callback) {
+    let request = new XMLHttpRequest();
+    request.open(method, url, true);
+    request.setRequestHeader('Accept', 'application/json')
+    request.setRequestHeader('Content-Type', 'application/json')
+    request.setRequestHeader('Authorization', 'Bearer ' + access_token); 
+    request.send(body);
+    request.onload = callback;
+}
 
+////////////////////RECOMMENDATIONS///////////////
+
+function getRecommendations(url) {
+    callApi('GET', `https://api.spotify.com/v1/recommendations?seed_tracks=${url}`, null, handleRecommendationsResponse)
+}
+
+
+function getUserDetails() {
+    callApi('GET', 'https://api.spotify.com/v1/me', null, handleUserResponse)
+}
+
+function handleUserResponse() {
+    console.log(this.responseText)
+}
+
+
+//get postgres data
+//choose postgres data where playlistid = 
+//make request to recommendations with 5 songs
+//pick random song from response
+//
+
+function createPlaylist() {
+    user_id = 'conner.sommerfield'
+    body = {
+            "name": "Discover Music",
+            "description": "Automatically generated playlist for new music",
+            "public": false
+           }
+    callApiJSON('POST', `https://api.spotify.com/v1/users/${user_id}/playlists`, JSON.stringify(body), handleCreatePlaylistResponse)
+}
+
+var createdPlaylistId = ''
+
+function handleCreatePlaylistResponse() {
+    createdPlaylistId = JSON.parse(this.responseText).id
+    for (let i =0; i < songsToBeAdded.length; i++){
+        addSongtoPlaylist(songsToBeAdded[i])
+    }
+   
+
+}
+
+function addSongtoPlaylist(song) {
+    callApiJSON('POST', `https://api.spotify.com/v1/playlists/${createdPlaylistId}/tracks?uris=spotify:track:${song}`, null, handleCreateSongRequest)
+}
+
+function handleCreateSongRequest() {
+    console.log((this.responseText))
+}
+
+function addNewMusic() {
+    for (let i=0; i < playlistIds.length;i++) {
+        postgresTest(playlistIds[i])
+    }
+}
+
+function postgresTest(url) {
+    let request = new XMLHttpRequest();
+    request.open('GET', `http://localhost:5500/songs/byplaylist/${url}`, true);
+    request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded')
+    request.send(null);
+    request.onload = handlePostgres;
+    request.onload
+}
+
+function handlePostgres(){
+    randomSongStrings = ''
+    var data = JSON.parse(this.responseText);
+    console.log(data);
+    data.forEach(item => randomSongStrings += (item.spotifyid + ','))
+    randomSongStrings = randomSongStrings.slice(0, -1)
+    console.log(randomSongStrings)
+    getRecommendations(randomSongStrings)
+}
+   
+
+
+function handlegetSongDetails() {
+    if (this.status == 200) {
+        var data = JSON.parse(this.responseText);
+        console.log(data);
+    }
+}
+
+function randomNumberBetweenZeroAnd(number) {
+    randomNumber = Math.floor(Math.random() * (number + 1))
+    return randomNumber
+}
+
+function handleRecommendationsResponse() {
+    if (this.status == 200) {
+        var data = JSON.parse(this.responseText);
+        console.log(data);
+        console.log(data.tracks[randomNumberBetweenZeroAnd(4)].id)
+        songsToBeAdded.push(data.tracks[randomNumberBetweenZeroAnd(4)].id)
+    }
+}
 ///////////////////////////////PLAYLISTS/////////////////////////////////////
 
 
@@ -201,7 +309,7 @@ function doPlaylist(item) {
 
 function populateSongs() {
     for (i=0; i < playlistIds.length; i++) {
-        callApi('GET', `https://api.spotify.com/v1/playlists/${playlistIds[i]}/tracks`, null, handleSongResponse);
+        callApi('GET', `https://api.spotify.com/v1/playlists/${playlistIds[i]}/tracks?limit=5`, null, handleSongResponse);
     }
 }
 
@@ -209,19 +317,14 @@ function populateSongs() {
 function handleSongResponse() {
     console.log(this);
     var url = this.responseURL;
-    console.log(this.responseURL)
-    console.log(url);
     url = url.split('playlists/');
-    console.log(url)
     url = url[1].split('/');
-    console.log(url)
     url = url[0];
     console.log(url)
 
     if (this.status == 200) {
         var data = JSON.parse(this.responseText);
         console.log(data);
-        console.log(url)
         data.items.forEach(item => postSong(item, url));
     }
     else if ( this.status == 401 ){
@@ -235,6 +338,7 @@ function handleSongResponse() {
 
 
 function postSong(item, url) {
+    console.log(item)
     songname = item.track.name
     songid = item.track.id
     id = url

@@ -18,6 +18,7 @@ pool.query('SELECT * FROM playlists ORDER BY id ASC', (error, results) => {
 }
 
 const getSongs = (request, response) => {
+    console.log('im getting called for no reason')
     pool.query('SELECT * FROM songs ORDER BY id ASC', (error, results) => {
         if (error) {
         throw error
@@ -25,6 +26,20 @@ const getSongs = (request, response) => {
         response.status(200).json(results.rows)
     })
     }
+
+
+const pickSongs = (request, response) => {
+    const id = request.params.id.toString()
+    console.log('nice    ')
+    console.log(id)
+    pool.query('SELECT * FROM songs WHERE playlistkey = (SELECT id FROM playlists WHERE spotifyid = $1)', [id], (error, results) => {
+        if (error) {
+        throw error
+        }
+        response.status(200).json(results.rows)
+    })
+    }
+
 
 
 const getPlaylistById = (request, response) => {
@@ -111,6 +126,7 @@ const deletePlaylists = (request, response) => {
 module.exports = {
     getPlaylists,
     getSongs,
+    pickSongs,
     getPlaylistById,
     createPlaylist,
     createSong,

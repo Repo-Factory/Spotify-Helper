@@ -22,6 +22,7 @@ app.get('/', (request, response) => {
 
 app.get('/playlists', db.getPlaylists);
 app.get('/songs', db.getSongs);
+app.get('/songs/byplaylist/:id', db.pickSongs);
 app.get('/playlists/:id', db.getPlaylistById);
 app.post('/playlists', db.createPlaylist);
 app.post('/songs', db.createSong);

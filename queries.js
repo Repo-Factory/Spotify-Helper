@@ -17,6 +17,7 @@ pool.query('SELECT * FROM playlists ORDER BY id ASC', (error, results) => {
 })
 }
 
+
 const getSongs = (request, response) => {
     console.log('im getting called for no reason')
     pool.query('SELECT * FROM songs ORDER BY id ASC', (error, results) => {
@@ -30,8 +31,6 @@ const getSongs = (request, response) => {
 
 const pickSongs = (request, response) => {
     const id = request.params.id.toString()
-    console.log('nice    ')
-    console.log(id)
     pool.query('SELECT * FROM songs WHERE playlistkey = (SELECT id FROM playlists WHERE spotifyid = $1)', [id], (error, results) => {
         if (error) {
         throw error
@@ -41,10 +40,8 @@ const pickSongs = (request, response) => {
     }
 
 
-
 const getPlaylistById = (request, response) => {
 const id = parseInt(request.params.id)
-
 pool.query('SELECT * FROM playlists WHERE id = $1', [id], (error, results) => {
     if (error) {
     throw error
@@ -56,7 +53,6 @@ pool.query('SELECT * FROM playlists WHERE id = $1', [id], (error, results) => {
 
 const createPlaylist = (request, response) => {
     const [name, songs, spotifyId] = request.body
-
     pool.query('INSERT INTO playlists (name, songs, spotifyid) VALUES ($1, $2, $3) RETURNING *', [name, songs, spotifyId], (error, results) => {
         if (error) {
         throw error
@@ -68,7 +64,6 @@ const createPlaylist = (request, response) => {
 
 const createSong = (request, response) => {
     const [name, spotifyId, id] = request.body
-
     pool.query('INSERT INTO songs (name, spotifyid, playlistkey) VALUES ($1, $2, (SELECT id from playlists WHERE spotifyid=$3)) RETURNING *', [name, spotifyId, id], (error, results) => {
         if (error) {
         throw error
@@ -76,6 +71,7 @@ const createSong = (request, response) => {
         response.status(201).send(`Playlists added with ID: ${results.rows[0].id}`)
     })
 }
+
 
 const updatePlaylist = (request, response) => {
 const id = parseInt(request.params.id)
@@ -94,34 +90,35 @@ pool.query(
 )
 }
 
+
 const deletePlaylist = (request, response) => {
-const id = parseInt(request.params.id)
-
-pool.query('DELETE FROM playlists WHERE id = $1', [id], (error, results) => {
-    if (error) {
-    throw error
-    }
-    response.status(200).send(`Playlists deleted with ID: ${id}`)
-})
-}
-
-const deletePlaylists = (request, response) => {
-    
-    pool.query('DELETE FROM playlists')
+    const id = parseInt(request.params.id)
+    pool.query('DELETE FROM playlists WHERE id = $1', [id], (error, results) => {
         if (error) {
         throw error
         }
         response.status(200).send(`Playlists deleted with ID: ${id}`)
-    }
+    })
+}
 
-    const deleteSongs = (request, response) => {
-    
-        pool.query('DELETE FROM songs')
-            if (error) {
-            throw error
-            }
-            response.status(200).send(`Playlists deleted with ID: ${id}`)
+
+const deletePlaylists = (request, response) => {
+    pool.query('DELETE FROM playlists', (error, results) => {
+        if (error) {
+        throw error
         }
+        response.status(200).send(`Playlists deleted}`)
+    })
+}
+
+const deleteSongs = (request, response) => {
+    pool.query('DELETE FROM songs', (error, results) => {
+        if (error) {
+        throw error
+        }
+        response.status(200).send(`Songs deleted`)
+    })
+}
 
 module.exports = {
     getPlaylists,

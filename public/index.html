@@ -8,30 +8,50 @@
     <script src="app.js"></script>
 </head>
   <body onload="onPageLoad()">
-    <div id='container' class="container">
-        <div class="col">
-            <div id="banner">
-              Spotify Authenticate
-            </div>
-            <div class='inputBox'>
-                <label for="clientId" class="form-control-label">Client ID </label>
-                <input type="text" class="form-control" id="clientId" placeholder="">
-            </div>
-            <div class='inputBox'>
-                <label for="clientSecret" class="form-control-label">Client Secret</label>
-                <input type="password" class="form-control" id="clientSecret" placeholder="">
-            </div>
-            
-            <input class="button" type="button" onclick="requestAuthorization()" value="Request Authorization">
-            <input class="button" type="button" onclick="addNewMusic()" value="Add new music">
-            <input class="button" type="button" onclick="createPlaylist()" value="create playlist">
-            <input class="button" type="button" onclick="getUserDetails()" value="User Details">
-            <input class="button" type="button" onclick="addSongtoPlaylist()" value="Add Song">
-
-
-
-        </div>
+    <div id='login' class='login'>
+      <div id='container' class="container">
+          <div class="col">
+              <div id="banner">
+                Spotify Authenticate
+              </div>
+              <div class='inputBox'>
+                  <label for="clientId" class="form-control-label">Client ID </label>
+                  <input type="login" class="form-control" id="clientId" placeholder="">
+              </div>
+              <div class='inputBox'>
+                  <label for="clientSecret" class="form-control-label">Client Secret</label>
+                  <input type="secret" class="form-control" id="clientSecret" placeholder="">
+              </div>
+              <input class="button" type="button" onclick="requestAuthorization()" value="Request Authorization">
+          </div> 
+      </div>
     </div>
+    <div id='functions' class="functions">
+      <div class="container">
+        <div id="banner">
+          Account Info
+        </div>
+        <div class="inputBox">
+          <label for="playlists" class="form-control-label" id="">Playlists</label>
+          <select id="playlists" class="form-control"></select>
+          <input class="button" type="button" onclick="viewPlaylists()" value="View playlists">
+        </div>
+        <div class="inputBox">
+            <label for="songs" class="form-control-label" id="">Songs</label>
+            <select id="songs" class="form-control"></select>
+            <input class="button" type="button" onclick="viewSongs()" value="View songs">
+        </div>
+        <div>
+          <input class="button" type="button" onclick="populateAccount()" value="Clone Account">
+          <input class="button" type="button" onclick="discoverMusic()" value="Discover Music">
+
+          <span id='created'>Playlist Created!</span>
+        </div>
+
+      </div>
+    </div>
+        
+    
   </body>
 </html>
 

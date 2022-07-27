@@ -1,11 +1,16 @@
 const Pool = require('pg').Pool
 const pool = new Pool({
   user: 'spotify',
-  host: 'localhost',
+  host: 'db',
   database: 'spotify',
-  password: '0o0o0o0o)O)O)O)O',
+  password: 'spotify',
   port: 5432,
 })
+
+
+function createDb() {
+    pool.query('CREATE TABLE playlists (id serial PRIMARY KEY, name VARCHAR(150), songs integer, spotifyid VARCHAR(80)); CREATE TABLE songs ( id serial PRIMARY KEY, name VARCHAR(150), spotifyid VARCHAR(80) playlistkey = FOREIGN KEY(id) REFERENCES playlists(id);')
+}
 
 
 const getPlaylists = (request, response) => {
@@ -19,7 +24,6 @@ pool.query('SELECT * FROM playlists ORDER BY id ASC', (error, results) => {
 
 
 const getSongs = (request, response) => {
-    console.log('im getting called for no reason')
     pool.query('SELECT * FROM songs ORDER BY id ASC', (error, results) => {
         if (error) {
         throw error
@@ -111,6 +115,7 @@ const deletePlaylists = (request, response) => {
     })
 }
 
+
 const deleteSongs = (request, response) => {
     pool.query('DELETE FROM songs', (error, results) => {
         if (error) {
@@ -120,7 +125,9 @@ const deleteSongs = (request, response) => {
     })
 }
 
+
 module.exports = {
+    createDb,
     getPlaylists,
     getSongs,
     pickSongs,

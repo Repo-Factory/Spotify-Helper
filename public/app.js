@@ -234,6 +234,7 @@ function getPostgresPlaylists() {
 
 
 function handleGetPostgresPlaylists() {
+    playlistIds =[];
     var data = JSON.parse(this.responseText);
     data.forEach(item => playlistIds.push(item.spotifyid));
     console.log(playlistIds)

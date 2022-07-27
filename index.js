@@ -16,15 +16,14 @@ app.use(
 )
 
 app.get('/');
-app.get('/db', db.createDb);
 app.get('/playlists', db.getPlaylists);
+app.get('/playlists/:id', db.getPlaylistById);
 app.get('/songs', db.getSongs);
 app.get('/songs/byplaylist/:id', db.pickSongs);
-app.get('/playlists/:id', db.getPlaylistById);
 app.post('/playlists', db.createPlaylist);
 app.post('/songs', db.createSong);
-app.put('/playlists/:id', db.updatePlaylist);
 app.delete('/playlists/:id', db.deletePlaylist);
+app.delete('/songs/:id', db.deleteSong);
 app.delete('/playlists', db.deletePlaylists);
 app.delete('/songs', db.deleteSongs);
 

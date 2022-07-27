@@ -8,11 +8,6 @@ const pool = new Pool({
 })
 
 
-function createDb() {
-    pool.query('CREATE TABLE playlists (id serial PRIMARY KEY, name VARCHAR(150), songs integer, spotifyid VARCHAR(80)); CREATE TABLE songs ( id serial PRIMARY KEY, name VARCHAR(150), spotifyid VARCHAR(80) playlistkey = FOREIGN KEY(id) REFERENCES playlists(id);')
-}
-
-
 const getPlaylists = (request, response) => {
 pool.query('SELECT * FROM playlists ORDER BY id ASC', (error, results) => {
     if (error) {
@@ -21,6 +16,16 @@ pool.query('SELECT * FROM playlists ORDER BY id ASC', (error, results) => {
     response.status(200).json(results.rows)
 })
 }
+
+const getPlaylistById = (request, response) => {
+    const id = parseInt(request.params.id)
+    pool.query('SELECT * FROM playlists WHERE id = $1', [id], (error, results) => {
+        if (error) {
+        throw error
+        }
+        response.status(200).json(results.rows)
+    })
+    }
 
 
 const getSongs = (request, response) => {
@@ -42,17 +47,6 @@ const pickSongs = (request, response) => {
         response.status(200).json(results.rows)
     })
     }
-
-
-const getPlaylistById = (request, response) => {
-const id = parseInt(request.params.id)
-pool.query('SELECT * FROM playlists WHERE id = $1', [id], (error, results) => {
-    if (error) {
-    throw error
-    }
-    response.status(200).json(results.rows)
-})
-}
 
 
 const createPlaylist = (request, response) => {
@@ -77,24 +71,6 @@ const createSong = (request, response) => {
 }
 
 
-const updatePlaylist = (request, response) => {
-const id = parseInt(request.params.id)
-const { name, songs } = request.body
-
-
-pool.query(
-    'UPDATE playlist SET name = $1, songs = $2 WHERE id = $3',
-    [name, songs, id],
-    (error, results) => {
-    if (error) {
-        throw error
-    }
-    response.status(200).send(`Playlists modified with ID: ${id}`)
-    }
-)
-}
-
-
 const deletePlaylist = (request, response) => {
     const id = parseInt(request.params.id)
     pool.query('DELETE FROM playlists WHERE id = $1', [id], (error, results) => {
@@ -102,6 +78,17 @@ const deletePlaylist = (request, response) => {
         throw error
         }
         response.status(200).send(`Playlists deleted with ID: ${id}`)
+    })
+}
+
+
+const deleteSong = (request, response) => {
+    const id = parseInt(request.params.id)
+    pool.query('DELETE FROM songs WHERE id = $1', [id], (error, results) => {
+        if (error) {
+        throw error
+        }
+        response.status(200).send(`Song deleted with ID: ${id}`)
     })
 }
 
@@ -127,15 +114,14 @@ const deleteSongs = (request, response) => {
 
 
 module.exports = {
-    createDb,
     getPlaylists,
+    getPlaylistById,
     getSongs,
     pickSongs,
-    getPlaylistById,
     createPlaylist,
     createSong,
-    updatePlaylist,
     deletePlaylist,
+    deleteSong,
     deletePlaylists,
     deleteSongs,
 }

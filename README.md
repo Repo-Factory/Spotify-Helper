@@ -28,7 +28,7 @@ To get started just clone this repository with
 
 ```docker-compose up --build -d```
 
- Visit [localhost:5500](127.0.0.1:5500) (I have express set up on port 5500) when everything's up and running and it will bring you to the authentication page.
+ Visit [localhost:5500](http://127.0.0.1:5500) (I have express set up on port 5500) when everything's up and running and it will bring you to the authentication page.
 
 As far as the spotify side of things go, you do need a [Spotify For Developers](https://developer.spotify.com/) account to be able to authenticate with the API. It's very easy and takes less than five minutes. The id and secret key they give you are plugged into the login page of the webapp to be able populate information for the user's account. One last thing you have to do for their API is register the redirect URI in their settings. Just click edit settings in the developer page once you have an account created and put in 127.0.0.1:5500 (it will be docker's localhost, which I have set up to run on port 5500), it will work. 
 

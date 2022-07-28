@@ -1,6 +1,6 @@
 # **Spotify Playlist Creator**
 
-![alt text](https://user-images.githubusercontent.com/108435248/181633405-c5ccd65e-7ec6-4d69-9720-7b2ab8405aeb.png "Drink Array")
+![alt text](https://user-images.githubusercontent.com/108435248/181635952-deabbc2b-3e33-4673-979c-08ac683336d9.png "Playlist Clone")
 
 
 ## _Introduction_
@@ -21,13 +21,14 @@ This app integrates with the spotify API and has the ability to download the use
 Even better than the spotify automation, the caveman days of setting up the entire enviroment, database and server are over because I was able to (with much pain) get this docker-compose file up and running... and oh is it beautiful. The docker container runs both the app and a containerized postgres database on its network, meaning the user has a clean slate every time they run the program - all with no setup. The spotify setup takes longer than the app setup.
 
 To get started just clone this repository with
+
 ```git clone https://github.com/Repo-Factory/Spotify-Helper.git```
 
  and run 
 
-```docker-compose up --build -d.```
+```docker-compose up --build -d```
 
- Visit [localhost:5500]  (127.0.0.1:5500) (I have express set up on port 5500) when everything's up and running and it will bring you to the authentication page.
+ Visit [localhost:5500](127.0.0.1:5500) (I have express set up on port 5500) when everything's up and running and it will bring you to the authentication page.
 
 As far as the spotify side of things go, you do need a [Spotify For Developers](https://developer.spotify.com/) account to be able to authenticate with the API. It's very easy and takes less than five minutes. The id and secret key they give you are plugged into the login page of the webapp to be able populate information for the user's account. One last thing you have to do for their API is register the redirect URI in their settings. Just click edit settings in the developer page once you have an account created and put in 127.0.0.1:5500 (it will be docker's localhost, which I have set up to run on port 5500), it will work. 
 

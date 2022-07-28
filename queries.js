@@ -7,6 +7,13 @@ const pool = new Pool({
   port: 5432,
 })
 
+/**
+ * 
+ * Queries file contains functions for CRUD operations on the postgreSQL database. The databasse name is spotify and it 
+ * contains a playlists table and a song table. The song table is related to the playlist table with a foreign key 
+ * integer 'playlist key 'that references the id of the associated playlist.
+ */
+
 
 const getPlaylists = (request, response) => {
 pool.query('SELECT * FROM playlists ORDER BY id ASC', (error, results) => {
@@ -28,6 +35,7 @@ const getPlaylistById = (request, response) => {
     }
 
 
+//all songs
 const getSongs = (request, response) => {
     pool.query('SELECT * FROM songs ORDER BY id ASC', (error, results) => {
         if (error) {
@@ -37,8 +45,8 @@ const getSongs = (request, response) => {
     })
     }
 
-
-const pickSongs = (request, response) => {
+// all songs from one playlist
+const getSongByPlaylistId = (request, response) => {
     const id = request.params.id.toString()
     pool.query('SELECT * FROM songs WHERE playlistkey = (SELECT id FROM playlists WHERE spotifyid = $1)', [id], (error, results) => {
         if (error) {
@@ -117,7 +125,7 @@ module.exports = {
     getPlaylists,
     getPlaylistById,
     getSongs,
-    pickSongs,
+    getSongByPlaylistId,
     createPlaylist,
     createSong,
     deletePlaylist,

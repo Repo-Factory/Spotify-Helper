@@ -1,7 +1,12 @@
+/**
+ * HOUSES ALL SPOTIFY FUNCTIONS
+ */
+
+
 var access_token = null;
 var refresh_token = null;
-var redirect_uri = 'http://127.0.0.1:5500';
-var scope = 'playlist-read-private playlist-read-collaborative playlist-modify-public playlist-modify-private user-library-read';
+var redirect_uri = 'http://127.0.0.1:5500'; //address of app in docker container
+var scope = 'playlist-read-private playlist-read-collaborative playlist-modify-public playlist-modify-private user-library-read'; //Specific desired permissions from spotify
 
 const authUrl = 'https://accounts.spotify.com/authorize';
 const tokenUrl = 'https://accounts.spotify.com/api/token';
@@ -10,11 +15,10 @@ const tracksUrl = "https://api.spotify.com/v1/playlists/{{PlaylistId}}/tracks";
 
 var client_id ='';
 var client_secret ='';
-var user_id = ''
+var user_id = '' //name of user in spotify, different from client_id provided by Spotify Developers page
 
 var playlistIds = [];
 var songsToBeAdded = [];
-
 
 
 /**
@@ -27,7 +31,7 @@ var songsToBeAdded = [];
 
 // executed on form submission, sends request to spotify authorize URL
 function requestAuthorization() {
-    localStorage. clear()
+    localStorage.clear()
     getFormData(); // client id/secret from HTML form
     setStorage();
     sleep(300)
@@ -48,7 +52,6 @@ function onPageLoad() {
         if (access_token == null) {
             document.getElementById("login").style.display = 'block';
             document.getElementById("functions").style.display = 'none';
-
         }
         else {
             document.getElementById("functions").style.display = 'block';
@@ -244,7 +247,7 @@ function handleGetPostgresPlaylists() {
 /**
  * Song Section 
  * 
- * Defines unctions for adding songs to the frontend aand commiting them to the database
+ * Defines functions for adding songs to the frontend aand commiting them to the database
  */
 
 

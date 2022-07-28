@@ -23,15 +23,6 @@ body {
     box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
 }
 
-.login-title {
-    margin-top: 15px;
-    text-align: center;
-    font-size: 30px;
-    letter-spacing: 2px;
-    margin-top: 15px;
-    font-weight: bold;
-    color: #ECF0F5;
-}
 
 input[type=login] {
     background-color: #1A2226;
@@ -76,12 +67,6 @@ select {
     color: #ECF0F5;
 }
 
-
-.form-group {
-    margin-bottom: 40px;
-    outline: 0px;
-}
-
 .button {
     margin: 25px .5vw .5vw .5vw;
     padding:1vw;
@@ -102,9 +87,6 @@ input:focus {
     box-shadow: 0 0 0;
 }
 
-label {
-    margin-bottom: 0px;
-}
 
 .form-control-label {
     font-size: 16px;
@@ -119,23 +101,9 @@ label {
     right: 0px;
 }
 
-.login-btm {
-    float: left;
-}
-
 .button {
     padding-right: 0px;
     margin-bottom: 25px;
-}
-
-.login-text {
-    text-align: left;
-    padding-left: 0px;
-    color: #A2A4A4;
-}
-
-.loginbttm {
-    padding: 0px;
 }
 
 #created {

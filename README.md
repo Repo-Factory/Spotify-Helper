@@ -22,11 +22,11 @@ Even better than the spotify automation, the caveman days of setting up the enti
 
 To get started just clone this repository with
 
-    ```git clone https://github.com/Repo-Factory/Spotify-Helper.git .```
+    git clone https://github.com/Repo-Factory/Spotify-Helper.git .
 
  and run 
 
-    ```docker-compose up --build -d```
+    docker-compose up --build -d
 
  Visit [localhost:5500](http://127.0.0.1:5500) (I have express set up on port 5500) when everything's up and running and it will bring you to the authentication page.
 

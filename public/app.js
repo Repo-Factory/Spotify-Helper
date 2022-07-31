@@ -3,19 +3,30 @@
  */
 
 
-var access_token = null;
-var refresh_token = null;
-var redirect_uri = 'http://127.0.0.1:5500'; //address of app in docker container
-var scope = 'playlist-read-private playlist-read-collaborative playlist-modify-public playlist-modify-private user-library-read'; //Specific desired permissions from spotify
-
+const redirect_uri = 'http://127.0.0.1:5500';
 const authUrl = 'https://accounts.spotify.com/authorize';
 const tokenUrl = 'https://accounts.spotify.com/api/token';
 const playlistUrl = 'https://api.spotify.com/v1/me/playlists?limit=50';
 const tracksUrl = "https://api.spotify.com/v1/playlists/{{PlaylistId}}/tracks";
 
-var client_id ='';
-var client_secret ='';
-var user_id = '' //name of user in spotify, different from client_id provided by Spotify Developers page
+
+class User {
+    constructor(client_id, client_secret, access_token) {
+        this.client_id = client_id; 
+        this.client_secret = client_secret;
+        this.access_token = access_token;
+        this.scope = 'playlist-read-private playlist-read-collaborative playlist-modify-public playlist-modify-private user-library-read'; //Specific desired permissions from spotify
+    }
+    set(client_id) {this.client_id = client_id} 
+    set(client_secret) {this.client_secret = client_secret}
+    set_access_token(access_token) {this.access_token = access_token}
+    get_client_id() {return this.client_id} 
+    get_client_secret() {return this.client_secret}
+    get_access_token() {return this.access_token}
+}
+
+//this.user_id = getUserDetails();  //name of user in spotify, different from client_id provided by Spotify Developers page
+
 
 var playlistIds = [];
 var songsToBeAdded = [];
@@ -29,111 +40,161 @@ var songsToBeAdded = [];
   */
 
 
-// executed on form submission, sends request to spotify authorize URL
+//executed on form submission, sends request to spotify authorize URzl
 function requestAuthorization() {
-    localStorage.clear()
-    getFormData(); // client id/secret from HTML form
-    setStorage();
-    sleep(300)
-    url = buildUrl();
+    let user = createUser();
+    url = buildAuthUrl(user);
     window.location.href = url;
+}
+
+
+//makes a new user object with id and secret information from form
+function createUser() {
+    let client_id = getFormclient_id();
+    let client_secret = getFormSecret();
+    setStorage(client_id, client_secret)
+    let user = new User(client_id, client_secret, null) 
+    return user
+}
+
+
+//URL used to make authorization request to Spotify
+function buildAuthUrl(user) {
+    let url = authUrl +
+    '?client_id=' + user.client_id +
+    '&response_type=code' +
+    '&redirect_uri=' + encodeURI(redirect_uri) +
+    '&show_dialog=true' +
+    '&scope=' + user.scope;
+    return url
 }
 
 
 // executed on initial page load and redirect back to website, initial load won't call functions until authentication
 //on the redirect, function will be called to populate postgres database with playlists and songs
-function onPageLoad() {
-    getStorage();
-    if (window.location.search.length > 0) {
-        handleRedirect();
+async function onPageLoad() {
+    
+    let client_id = get_client_id();
+    let client_secret = get_client_secret();
+    let user = new User(client_id, client_secret, access_token=null)
+    await authorizeUser(user)
+
+    if (user.access_token == null) {
+        document.getElementById("login").style.display = 'block';
+        document.getElementById("functions").style.display = 'none';
     }
     else {
-        access_token = localStorage.getItem("access_token");
-        if (access_token == null) {
-            document.getElementById("login").style.display = 'block';
-            document.getElementById("functions").style.display = 'none';
-        }
-        else {
-            document.getElementById("functions").style.display = 'block';
-            document.getElementById("login").style.display = 'none';
+        document.getElementById("functions").style.display = 'block';
+        document.getElementById("login").style.display = 'none';
 
-            getUserDetails();
-        }
+        //getUserDetails();
     }
 }
 
-
 //cleans URL and requests access token
-function handleRedirect() {
+async function authorizeUser(user) {
     let code = getCode(); // using URL paramter
-    requestAccessToken(code);
-    window.history.pushState('', '', redirect_uri);
+    if (code != null) {
+        let access_token = await requestAccessToken(code, user);
+        window.history.pushState('', '', redirect_uri);
+        user.set_access_token(access_token);
+        let authorizedUser = user;
+        return authorizedUser;
+    }
+    return user
 }
 
 
 //creates body for token request
-function requestAccessToken(code) {
-    body = buildBody(code)
-    callAuthApi(body);
+async function requestAccessToken(code, user) {
+    body = buildBody(code, user);
+    json = await callAuthApi(body, user);
+    user.access_token = json.access_token;
+    return user.access_token;
 }
 
 
-//makes request to spotify token API page
-function callAuthApi(body) {
-    let request = new XMLHttpRequest();
-    request.open('POST', tokenUrl, true);
-    request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded')
-    request.setRequestHeader('Authorization', 'Basic ' + btoa(client_id + ':' + client_secret)); 
-    request.send(body);
-    request.onload = handleAuthResponse;
-}
-
-
-//stores data from response
-function handleAuthResponse() {
-    if (this.status == 200) {
-        var data = JSON.parse(this.responseText);
-        console.log(data);
-        setToken(data.access_token, 'access_token')
-        setToken(data.refresh_token, 'refresh_token')
-        onPageLoad();
+//makes request to spotify token API page for authorization
+async function callAuthApi(body, user) {
+    try {
+        const request = await fetch(tokenUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': 'Basic ' + btoa(user.client_id + ':' + user.client_secret),
+        },
+        body : body
+    })
+    const json = await request.json();
+    console.log(json)
+    return json
     }
-    else{
-        console.log(this.responseText);
+    catch(err) {
+        throw err;
     }
 }
 
 
-//token times out after 3600 seconds, this reauthorizes with refresh token in local storage
-function refreshAccessToken(){
-    refresh_token = localStorage.getItem("refresh_token");
-    let body = "grant_type=refresh_token" +
-    "&refresh_token=" + refresh_token +
-    "&client_id=" + client_id;
-    callAuthApi(body);
+//once user has access token, this general API call function can be used; all of the calls are similar in format
+async function callApi(method, url, body, access_token) {
+    try {
+        const request = await fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + access_token,
+        },
+        body : JSON.stringify(body)
+    })
+    const json = request.json();
+    return json
+    }
+    catch(err) {
+        throw err;
+    }
 }
 
 
-//general API call function; all of the calls are similar in format
-function callApi(method, url, body, callback) {
-    let request = new XMLHttpRequest();
-    request.open(method, url, true);
-    request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-    request.setRequestHeader('Authorization', 'Bearer ' + access_token); 
-    request.send(body);
-    request.onload = callback;
+///////////////Authorize Helpers////////////////
+
+
+//grab data from form to set id and password
+function getFormclient_id() {
+    let client_id = document.getElementById('client_id').value;
+    return client_id
+}
+function getFormSecret() {
+    client_secret = document.getElementById('client_secret').value;
+    return client_secret
 }
 
 
-//general api call in JSON format for post requests to spotify to create playlists/songs
-function callApiJSON(method, url, body, callback) {
-    let request = new XMLHttpRequest();
-    request.open(method, url, true);
-    request.setRequestHeader('Accept', 'application/json');
-    request.setRequestHeader('Content-Type', 'application/json');
-    request.setRequestHeader('Authorization', 'Bearer ' + access_token); 
-    request.send(body);
-    request.onload = callback;
+//have to set storage with form data to preserve it through browser redirect
+function setStorage(client_id, client_secret) {
+    localStorage.setItem('client_id', client_id);
+    localStorage.setItem('client_secret', client_secret);
+    sleep(300)
+}
+//getters for local storage items
+function get_client_id() {
+    let client_id = localStorage.getItem("client_id");
+    return client_id    
+}
+function get_client_secret() {
+    let client_secret = localStorage.getItem("client_secret");
+    return client_secret    
+}
+
+
+//gets code sent from spotify as query param for access token
+function getCode() {
+    let code = null;
+    const queryString = window.location.search;
+    if(queryString.length > 0) {
+        const urlParams = new URLSearchParams(queryString);
+        code = urlParams.get('code')
+    }
+    return code;
 }
 
 
@@ -146,53 +207,48 @@ function callApiJSON(method, url, body, callback) {
 
 
 //resets database to avoid duplicates, must delete songs before playlists because of foreign key relation
-function deleteSongs() {
-    fetch('http://localhost:5500/songs', {
+async function deleteSongs() {
+    try {fetch('http://localhost:5500/songs', {
             method: 'DELETE',
             body: null
         })
+    }
+    catch(err) {
+        console.log(err)
+    }
 }
-function deletePlaylists() {
-    fetch('http://localhost:5500/playlists', {
+async function deletePlaylists() {
+    try {fetch('http://localhost:5500/playlists', {
         method: 'DELETE',
         body: null
-    })
+        })
+    }
+    catch(err){
+    }
+}
+async function resetDatabase() {
+    const songsDeleted = await deleteSongs();
+    const playlistsDeleted = await deletePlaylists();
+    return Promise.all(songsDeleted, playlistsDeleted)
 }
 
 
 //performs get request to spotify to get playlists associated with the user
-function populatePlaylists() {
-    deleteSongs()
-    callApi('GET', playlistUrl, null, handlePlaylistResponse);
-}
-
-
-//resets postgres database with delete request, and if posts each playlist to the postgres database
-function handlePlaylistResponse() {
-    deletePlaylists();
-    if (this.status == 200) {
-        var data = JSON.parse(this.responseText);
-        console.log(data);
-        data.items.forEach(item => postPlaylist(item));
-    }
-    else if ( this.status == 401 ){
-        refreshAccessToken();
-    }
-    else {
-        console.log(this.responseText);
-        alert(this.responseText);
-    }
+async function populatePlaylists() {
+    await resetDatabase();
+    json = await callApi('GET', playlistUrl, null);
+    return json.items.forEach(item => postPlaylist(item));
 }
 
 
 //makes post request to postgres database with the playlist info to include title, number of tracks, and its id on spotify
 //this info is used to construct query to database
-function postPlaylist(item) {
+async function postPlaylist(item) {
     title = item.name;
     tracks = item.tracks.total;
     spotifyId = item.id;
     const playlistDetails = {title, tracks, spotifyId};
-    request = fetch('http://localhost:5500/playlists', {
+    return request = await fetch('http://localhost:5500/playlists', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(Object.values(playlistDetails)),
@@ -471,47 +527,13 @@ function handleAddSongRequest() {
  * Helper Section
  */
 
-
-//grab data from form to set id and password
-function getFormData() {
-    client_id = document.getElementById('clientId').value;
-    client_secret = document.getElementById('clientSecret').value;
-}
-
-
-//puts id and password in storage to access them after redirect
-function setStorage() {
-    localStorage.setItem('client_id', client_id);
-    localStorage.setItem('client_secret', client_secret);
-    localStorage.setItem('redirect_uri', redirect_uri);
-}
-
-
-function getStorage() {
-    client_id = localStorage.getItem("client_id");
-    client_secret = localStorage.getItem("client_secret");
-}
-
-
-//URL used to make authorization request to Spotify
-function buildUrl() {
-    let url = authUrl +
-    '?client_id=' + client_id +
-    '&response_type=code' +
-    '&redirect_uri=' + encodeURI(redirect_uri) +
-    '&show_dialog=true' +
-    '&scope=' + scope;
-    return url
-}
-
-
 //URL used to make request to Spotify for access token
-function buildBody(code) {
+function buildBody(code, user) {
     let body = "grant_type=authorization_code" +
     "&code=" + code +
     "&redirect_uri=" + encodeURI(redirect_uri) +
-    "&client_id=" + client_id +
-    "&client_secret=" + client_secret;
+    "&client_id=" + user.client_id +
+    "&client_secret=" + user.client_secret;
     return body;
 }
 
@@ -524,16 +546,6 @@ function setToken(token, tokenString) {
 }}
 
     
-//gets code sent from spotify as query param for access token
-function getCode() {
-    let code = null;
-    const queryString = window.location.search;
-    if( queryString.length > 0) {
-        const urlParams = new URLSearchParams(queryString);
-        code = urlParams.get('code')
-    }
-    return code;
-}
 
 
 //a javascript sleep mimic to help with adding songs to playlist; if the songs are added too fast spotify will give an error
@@ -548,7 +560,7 @@ function sleep(milliseconds) {
 
 //retrieves user id which is needed to make a new playlist
 function getUserDetails() {
-    callApi('GET', 'https://api.spotify.com/v1/me', null, handleUserResponse)
+    json = callApi('GET', 'https://api.spotify.com/v1/me', null)
 }
 function handleUserResponse() {
     user_id = JSON.parse(this.responseText).id

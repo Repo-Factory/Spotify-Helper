@@ -16,11 +16,11 @@
               </div>
               <div class='inputBox'>
                   <label for="clientId" class="form-control-label">Client ID </label>
-                  <input type="login" class="form-control" id="clientId" placeholder="">
+                  <input type="login" class="form-control" id="client_id" placeholder="">
               </div>
               <div class='inputBox'>
                   <label for="clientSecret" class="form-control-label">Client Secret</label>
-                  <input type="secret" class="form-control" id="clientSecret" placeholder="">
+                  <input type="secret" class="form-control" id="client_secret" placeholder="">
               </div>
               <input class="button" type="button" onclick="requestAuthorization()" value="Request Authorization">
           </div> 
@@ -42,6 +42,8 @@
             <input class="button" type="button" onclick="viewSongs()" value="View songs">
         </div>
         <div>
+          <input class="button" type="button" onclick="populatePlaylists()" value="Populate Playlists">
+
           <input class="button" type="button" onclick="populateAccount()" value="Clone Account">
           <input class="button" type="button" onclick="discoverMusic()" value="Discover Music">
           <span id='created'>Playlist Created!</span>

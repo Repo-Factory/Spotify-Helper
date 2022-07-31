@@ -12,6 +12,7 @@ const bodyParser = require('body-parser');
 const app = express();
 const port = 5500;
 
+
 app.use(cors());
 app.use(express.static('public')); //serves HTML file from public folder for front end
 app.use(bodyParser.json());

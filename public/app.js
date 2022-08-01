@@ -3,7 +3,7 @@
  */
 
 
-const redirect_uri = 'http://127.0.0.1:5500';
+const redirect_uri = 'http://172.20.221.221:5500';
 const authUrl = 'https://accounts.spotify.com/authorize';
 const tokenUrl = 'https://accounts.spotify.com/api/token';
 const playlistUrl = 'https://api.spotify.com/v1/me/playlists?limit=50';
@@ -24,6 +24,7 @@ class User {
     get_client_secret() {return this.client_secret}
     get_access_token() {return this.access_token}
 }
+
 
 //necessary global to keep track of access_token for API requests
 var currentUser;
@@ -73,11 +74,14 @@ async function onPageLoad() {
     
     let client_id = get_client_id();
     let client_secret = get_client_secret();
-    let user = new User(client_id, client_secret, access_token=null);
-    user = await authorizeUser(user); //try to authorize user on page load
+    let access_token = get_access_token();
+    let user = new User(client_id, client_secret, access_token=access_token);
+    if (user.access_token == null || user.access_token == undefined) {
+        user = await authorizeUser(user); //try to authorize user on page load
+    }
     currentUser = user; 
-
-    if (user.access_token == null) {
+    
+    if (user.access_token == null || user.access_token == undefined) {
         document.getElementById("login").style.display = 'block';
         document.getElementById("functions").style.display = 'none';
     }
@@ -93,6 +97,7 @@ async function authorizeUser(user) {
     if (code != null) {
         let access_token = await requestAccessToken(code, user);
         window.history.pushState('', '', redirect_uri);
+        localStorage.setItem('access_token', access_token);
         user.set_access_token(access_token);
         let authorizedUser = user;
         return authorizedUser;
@@ -209,6 +214,10 @@ function get_client_id() {
 function get_client_secret() {
     let client_secret = localStorage.getItem("client_secret");
     return client_secret    
+}
+function get_access_token() {
+    let access_token = localStorage.getItem("access_token")
+    return access_token
 }
 
 

@@ -25,11 +25,8 @@ class User {
     get_access_token() {return this.access_token}
 }
 
-//this.user_id = getUserDetails();  //name of user in spotify, different from client_id provided by Spotify Developers page
-
-
-var playlistIds = [];
-var songsToBeAdded = [];
+//necessary global to keep track of access_token for API requests
+var currentUser;
 
 
 /**
@@ -76,8 +73,9 @@ async function onPageLoad() {
     
     let client_id = get_client_id();
     let client_secret = get_client_secret();
-    let user = new User(client_id, client_secret, access_token=null)
-    await authorizeUser(user)
+    let user = new User(client_id, client_secret, access_token=null);
+    await authorizeUser(user);
+    currentUser = user;
 
     if (user.access_token == null) {
         document.getElementById("login").style.display = 'block';
@@ -114,6 +112,17 @@ async function requestAccessToken(code, user) {
 }
 
 
+//URL used to make request to Spotify for access token
+function buildBody(code, user) {
+    let body = "grant_type=authorization_code" +
+    "&code=" + code +
+    "&redirect_uri=" + encodeURI(redirect_uri) +
+    "&client_id=" + user.client_id +
+    "&client_secret=" + user.client_secret;
+    return body;
+} 
+
+
 //makes request to spotify token API page for authorization
 async function callAuthApi(body, user) {
     try {
@@ -136,7 +145,7 @@ async function callAuthApi(body, user) {
 
 
 //once user has access token, this general API call function can be used; all of the calls are similar in format
-async function callApi(method, url, body, access_token) {
+async function callSpotifyApi(method, url, body, access_token) {
     try {
         const request = await fetch(url, {
         method: method,
@@ -144,17 +153,33 @@ async function callApi(method, url, body, access_token) {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer ' + access_token,
         },
-        body : JSON.stringify(body)
+        body : body
     })
-    const json = request.json();
+    const json = await request.json();
     return json
     }
     catch(err) {
-        throw err;
+        
     }
 }
 
-
+//general api call for postgres requests
+async function callApi(method, url, body) {
+    try {
+        const request = await fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body : body
+    })
+    const json = await request.json();
+    return json
+    }
+    catch(err) {
+        console.log(err);
+    }
+}
 ///////////////Authorize Helpers////////////////
 
 
@@ -208,35 +233,38 @@ function getCode() {
 
 //resets database to avoid duplicates, must delete songs before playlists because of foreign key relation
 async function deleteSongs() {
-    try {fetch('http://localhost:5500/songs', {
+    try { 
+        const request = await fetch('http://localhost:5500/songs', {
             method: 'DELETE',
-            body: null
         })
+        return request
     }
     catch(err) {
         console.log(err)
     }
 }
 async function deletePlaylists() {
-    try {fetch('http://localhost:5500/playlists', {
-        method: 'DELETE',
-        body: null
+    try { 
+        const request = await fetch('http://localhost:5500/playlists', {
+            method: 'DELETE',
         })
+        return request
     }
     catch(err){
+        console.log(err)
     }
 }
 async function resetDatabase() {
     const songsDeleted = await deleteSongs();
     const playlistsDeleted = await deletePlaylists();
-    return Promise.all(songsDeleted, playlistsDeleted)
+    return [songsDeleted, playlistsDeleted];
 }
 
 
 //performs get request to spotify to get playlists associated with the user
 async function populatePlaylists() {
     await resetDatabase();
-    json = await callApi('GET', playlistUrl, null);
+    let json = await callSpotifyApi('GET', playlistUrl, null, currentUser.access_token);
     return json.items.forEach(item => postPlaylist(item));
 }
 
@@ -244,9 +272,9 @@ async function populatePlaylists() {
 //makes post request to postgres database with the playlist info to include title, number of tracks, and its id on spotify
 //this info is used to construct query to database
 async function postPlaylist(item) {
-    title = item.name;
-    tracks = item.tracks.total;
-    spotifyId = item.id;
+    let title = item.name;
+    let tracks = item.tracks.total;
+    let spotifyId = item.id;
     const playlistDetails = {title, tracks, spotifyId};
     return request = await fetch('http://localhost:5500/playlists', {
         method: 'POST',
@@ -256,24 +284,10 @@ async function postPlaylist(item) {
 }
 
 
-function viewPlaylists() {
-    callApi('GET', playlistUrl, null, handleViewPlaylistResponse);
-}
-
-
-function handleViewPlaylistResponse() {
-    if (this.status == 200) {
-        var data = JSON.parse(this.responseText);
-        console.log(data);
-        data.items.forEach(item => addPlaylist(item));
-    }
-    else if ( this.status == 401 ){
-        refreshAccessToken();
-    }
-    else {
-        console.log(this.responseText);
-        alert(this.responseText);
-    }
+//view user playlists on frontend
+async function viewPlaylists() {
+    let json = await callSpotifyApi('GET', playlistUrl, null, currentUser.access_token);
+    return json.items.forEach(item => addPlaylist(item));
 }
 
 
@@ -287,16 +301,11 @@ function addPlaylist(item) {
 
 
 //instead of making another request to spotify's API, playlists can be fetched from postgres clone database
-function getPostgresPlaylists() {
-    callApi('GET', `http://localhost:5500/playlists`, null, handleGetPostgresPlaylists)
-}
-
-
-function handleGetPostgresPlaylists() {
-    playlistIds =[];
-    var data = JSON.parse(this.responseText);
-    data.forEach(item => playlistIds.push(item.spotifyid));
-    console.log(playlistIds)
+async function getPostgresPlaylists() {
+    let playlistIds = [];
+    let json = await callApi('GET', `http://localhost:5500/playlists`, null);
+    json.forEach(item => playlistIds.push(item.spotifyid))
+    return playlistIds
 }
 
 
@@ -309,17 +318,20 @@ function handleGetPostgresPlaylists() {
 
 //for each playlist, makes a get request to spotify api to get the songs of that playlist to be commited to postgres
 //database in later functions
-function populateSongs() {
-    getPostgresPlaylists();
-    setTimeout(() => {loopThroughPlaylists()}, 1000);    
+async function populateSongs() {
+    let playlistIds = await getPostgresPlaylists();
+    for (i=0; i < playlistIds.length; i++) {
+        let json = await getPlaylistSongs(playlistIds[i]);
+        let url = storeUrl(json)
+        json.items.forEach(item => postSong(item, url));
+    }
 }
 
 
 //helper for populateSongs()
-function loopThroughPlaylists() {
-    for (i=0; i < playlistIds.length; i++) {
-        callApi('GET', `https://api.spotify.com/v1/playlists/${playlistIds[i]}/tracks?limit=5`, null, handleSongResponse);
-    }
+async function getPlaylistSongs(playlist) {
+    let json = await callSpotifyApi('GET', `https://api.spotify.com/v1/playlists/${playlist}/tracks?limit=100`, null, currentUser.access_token);
+    return json
 }
 
 
@@ -329,35 +341,23 @@ function loopThroughPlaylists() {
 //send the href of the site visited to get that song details which does contain the id for the playlist, so this function
 //does some string manipulation to get that id and pass it into the next function in a loop which commits the songs to the
 //database
-function handleSongResponse() {
-    var url = this.responseURL;
+function storeUrl(playlistResponse) {
+    let url = playlistResponse.href;
     url = url.split('playlists/');
     url = url[1].split('/');
     url = url[0];
-
-    if (this.status == 200) {
-        var data = JSON.parse(this.responseText);
-        console.log(data);
-        data.items.forEach(item => postSong(item, url));
-    }
-    else if ( this.status == 401 ){
-        refreshAccessToken();
-    }
-    else {
-        console.log(this.responseText);
-        alert(this.responseText);
-    }
+    return url
 }
 
 
 //makes post request to the postgres database with the songname, spotifyid of the song, and the playlist id foreign key relation
 //which is used to construct the query
-function postSong(item, url) {
-    songname = item.track.name;
-    songid = item.track.id;
-    id = url;
+async function postSong(item, url) {
+    let songname = item.track.name;
+    let songid = item.track.id;
+    let id = url;
     const songDetails = {songname, songid, id};
-    request = fetch('http://localhost:5500/songs', {
+    return request = await fetch('http://localhost:5500/songs', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(Object.values(songDetails)),
@@ -365,30 +365,15 @@ function postSong(item, url) {
 }
 
 
-//based on the playlist selected in the frontend, sends API request for songs in that playlist
-function viewSongs() {
+//refreshes the picklist in the frontend as well as adding the songs, using the value of the playlist to call API
+//for correct playlist
+async function viewSongs() {
     let playlist_id = document.getElementById("playlists").value;
     if (playlist_id.length > 0){
         url = tracksUrl.replace("{{PlaylistId}}", playlist_id);
-        callApi("GET", url, null, handleViewSongResponse);
-    }
-}
-
-
-//verfies song request validity and refreshes the picklist in the frontend as well as adding the songs
-function handleViewSongResponse() {
-    if (this.status == 200){
-        var data = JSON.parse(this.responseText);
-        console.log(data);
+        let json = await callSpotifyApi("GET", url, null, currentUser.access_token);
         removeItems("songs");
-        data.items.forEach( (item, index) => addSong(item, index));
-    }
-    else if (this.status == 401){
-        refreshAccessToken()
-    }
-    else {
-        console.log(this.responseText);
-        alert(this.responseText);
+        return json.items.forEach((item, index) => addSong(item,index));
     }
 }
 
@@ -413,20 +398,31 @@ function addSong(item, index) {
 
 
 //clones playlists and songs of users spotify account and commits them to the postgres database 
-function populateAccount() {
-    populatePlaylists();
-    setTimeout(() => {populateSongs();}, 1000);
+async function populateAccount() {
+    showWaitingText('Cloning Account...')
+    await populatePlaylists();
+    await populateSongs();
+    return document.getElementById("created").textContent = "Account Cloned!";   
 }
 
 
 //executes all functions to create a new playlist based on recommendations collected from the Spotify API based on 
 //info in the postgres database
-function discoverMusic() {
-    getPostgresPlaylists()
-    setTimeout(() => {findNewMusic();}, 300);
-    setTimeout(() => {createPlaylist();}, 6000);
-    setTimeout(() => {document.getElementById("created").style.display = "inline";}, 9000);
-    
+async function discoverMusic() {
+    showWaitingText('Creating Playlist...');
+    let playlistsIds = await getPostgresPlaylists();
+    let newMusic = await findNewMusic(playlistsIds);
+    let playlist = await createPlaylist();
+    for (let i =0; i < newMusic.length; i++){
+        await addSongtoPlaylist(newMusic[i], playlist);
+        sleep(125)
+    }
+    return document.getElementById("created").textContent = "Playlist Created!";  
+}
+
+function showWaitingText(string) {
+    document.getElementById("created").style.display = "inline";  
+    document.getElementById("created").textContent = string;
 }
 
 
@@ -435,47 +431,66 @@ function discoverMusic() {
  */
 
 
-//sets off a chain of getting songs from database and then getting recommended song
-function findNewMusic() {
-    for (let i=0; i < playlistIds.length;i++) {
-        getPostgresSongs(playlistIds[i])
-    }
+
+//gets songs from one playlist from postgres database based on the playlistId
+async function getPostgresSongs(url) {
+    let songs = await callApi('GET', `http://localhost:5500/songs/byplaylist/${url}`, null);
+    return songs;
 }
 
 
-//gets songs from one playlist from postgres database based on the playlistId
-function getPostgresSongs(url) {
-    callApi('GET', `http://localhost:5500/songs/byplaylist/${url}`, null, handleGetPostgresSongs)
+//sets off a chain of getting songs from database and then getting recommended songs based on those seeds
+async function findNewMusic(playlistIds) {
+    let newSongs = [];
+    for (let i=0; i < playlistIds.length;i++) {
+        let songs = await getPostgresSongs(playlistIds[i]);
+        songSeeds = pickFiveSongs(songs);
+        seedString = createSeedString(songSeeds);
+        recommendation = await getRecommendation(seedString);
+        newSongs.push(recommendation);
+    }
+    return newSongs
+}
+
+
+//spotify gives recommendations based on seed songs, can take a maximum of 5 seed parameters
+function pickFiveSongs(songs) {
+    if (songs.length < 5) {
+        randomLower = 0;
+        randomUpper = songs.length - 1
+    }
+    else {
+        randomLower = Math.floor(Math.random()*(songs.length-5-1)) //max limit of 100 songs for spotify playlist return
+        randomUpper = randomLower + 5
+    }
+    songSeeds = songs.slice(randomLower, randomUpper)
+    return songSeeds
 }
 
 
 //creates a list of all the songs in the playlist seperated by commas, this is the format needed to pass into the 
 //spotify API at the recommend songs endpoint, then calls function to get recommendations 
-function handleGetPostgresSongs() {
-    randomSongStrings = ''
-    var data = JSON.parse(this.responseText);
-    console.log(data)
-    data.forEach(item => randomSongStrings += (item.spotifyid + ','))
+function createSeedString(songSeeds) {
+    let randomSongStrings = ''
+    songSeeds.forEach(item => randomSongStrings += (item.spotifyid + ','))
     randomSongStrings = randomSongStrings.slice(0, -1)
-    getRecommendations(randomSongStrings)
+    return randomSongStrings
 }
 
 
 //get request to recommendations endpoint of spotify API, passed in url made from handlePostres function
-function getRecommendations(seedTrackList) {
-    callApi('GET', `https://api.spotify.com/v1/recommendations?seed_tracks=${seedTrackList}`, null, handleRecommendationsResponse)
-}
-
-
 //response gives back a list of 20 recommended songs, this function chooses one and adds it to a list of songs to be added 
-function handleRecommendationsResponse() {
-    if (this.status == 200) {
-        var data = JSON.parse(this.responseText);
-        console.log(data);
-        console.log(data.tracks[randomNumberBetweenZeroAnd(4)].id)
-        songsToBeAdded.push(data.tracks[randomNumberBetweenZeroAnd(4)].id)
+async function getRecommendation(seedTrackList) {
+    try {
+        let recommendations = await callSpotifyApi('GET', `https://api.spotify.com/v1/recommendations?seed_tracks=${seedTrackList}`, null, currentUser.access_token)
+        let recommendation = recommendations.tracks[randomNumberBetweenZeroAnd(19)].id
+        return recommendation
+    }
+    catch(err) {
+        console.log("Couldn't Recommend Track")
     }
 }
+
 
 //helper to pick random song
 function randomNumberBetweenZeroAnd(number) {
@@ -488,64 +503,38 @@ function randomNumberBetweenZeroAnd(number) {
  * Part II: With songs recommendations collected, make a new playlist in spotify and add each song to that playlist
  */
 
+//retrieves user id which is needed to make a new playlist
+async function getUserDetails() {
+    let json = await callSpotifyApi('GET', 'https://api.spotify.com/v1/me', null, currentUser.access_token)
+    return json.id
+}
+
 //post request to spotify api to make playlist in account; note that user_id is different from client_id for authorization
-//to get user_id make get request to 'https://api.spotify.com/v1/me' 
-function createPlaylist() {
+//to get user_id make get request to 'https://api.spotify.com/v1/me'
+async function createPlaylist() {
+    let date = new Date();
+    let user_id = await getUserDetails();
     body = {
-            "name": "Discover Music",
+            "name": `Discover Music ${date}`,
             "description": "Automatically generated playlist for new music",
             "public": false
            }
-    callApiJSON('POST', `https://api.spotify.com/v1/users/${user_id}/playlists`, JSON.stringify(body), handleCreatePlaylistResponse)
+    let response = await callSpotifyApi('POST', `https://api.spotify.com/v1/users/${user_id}/playlists`, JSON.stringify(body), currentUser.access_token)
+    let createdPlaylistId = response.id;
+    return createdPlaylistId;
 }
 
 
-//When playlist is created, the response will send back info which is then parsed by this function to get the id, 
-//addSongtoPlaylist function in a loop to add each song in the list to the playlist of id which is passed in
-function handleCreatePlaylistResponse() {
-    createdPlaylistId = JSON.parse(this.responseText).id
-    for (let i =0; i < songsToBeAdded.length; i++){
-        addSongtoPlaylist(songsToBeAdded[i], createdPlaylistId);
-        sleep(125)
-    }
-}
-
-
-//post request to spotify api that takes in the spotifyid of the song and the playlist
-function addSongtoPlaylist(song, playlist) {
-    callApiJSON('POST', `https://api.spotify.com/v1/playlists/${playlist}/tracks?uris=spotify:track:${song}`, null, handleAddSongRequest)
-}
-
-
-//simple message to see if the song was added succesfully
-function handleAddSongRequest() {
-    console.log((this.responseText))
+//post request to spotify api to add song that takes in the spotifyid of the song and the playlist to add it to
+async function addSongtoPlaylist(song, playlist) {
+    let response = await callSpotifyApi('POST', `https://api.spotify.com/v1/playlists/${playlist}/tracks?uris=spotify:track:${song}`, null, currentUser.access_token)
+    return response
 }
 
 
 /**
  * Helper Section
  */
-
-//URL used to make request to Spotify for access token
-function buildBody(code, user) {
-    let body = "grant_type=authorization_code" +
-    "&code=" + code +
-    "&redirect_uri=" + encodeURI(redirect_uri) +
-    "&client_id=" + user.client_id +
-    "&client_secret=" + user.client_secret;
-    return body;
-}
-
-
-//takes the type of token(access/refresh) and puts them in storage to be used 
-function setToken(token, tokenString) {
-    if (token != undefined) {
-        this.token = token;
-        localStorage.setItem(tokenString, this.token);
-}}
-
-    
 
 
 //a javascript sleep mimic to help with adding songs to playlist; if the songs are added too fast spotify will give an error
@@ -557,15 +546,6 @@ function sleep(milliseconds) {
     } while (currentDate - date < milliseconds);
 }
 
-
-//retrieves user id which is needed to make a new playlist
-function getUserDetails() {
-    json = callApi('GET', 'https://api.spotify.com/v1/me', null)
-}
-function handleUserResponse() {
-    user_id = JSON.parse(this.responseText).id
-    console.log(user_id)
-}
 
 //removes items from picklist in frontend
 function removeItems(elementId){

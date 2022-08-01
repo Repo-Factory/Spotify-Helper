@@ -3,7 +3,7 @@
  */
 
 
-const redirect_uri = 'http://172.20.221.221:5500';
+const redirect_uri = 'http://127.0.0.1:5500';
 const authUrl = 'https://accounts.spotify.com/authorize';
 const tokenUrl = 'https://accounts.spotify.com/api/token';
 const playlistUrl = 'https://api.spotify.com/v1/me/playlists?limit=50';

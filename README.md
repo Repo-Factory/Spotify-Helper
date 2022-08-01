@@ -18,7 +18,7 @@ This app integrates with the spotify API and has the ability to download the use
 
 ## _SETUP_
 
-Even better than the spotify automation, the caveman days of setting up the entire enviroment, database and server are over because I was able to (with much pain) get this docker-compose file up and running... and oh is it beautiful. The docker container runs both the app and a containerized postgres database on its network, meaning the user has a clean slate every time they run the program - all with no setup. The spotify setup takes longer than the app setup.
+Even better than the spotify automation, the caveman days of setting up the entire enviroment, database and server are over because I was able to get this docker-compose file up and running... and oh is it beautiful. The docker container runs both the app and a containerized postgres database on its network, meaning the user has a clean slate every time they run the program - all with no setup. The spotify setup takes longer than the app setup.
 
 To get started just clone this repository with
 

@@ -320,7 +320,7 @@ async function getPostgresPlaylists() {
 /**
  * Song Section 
  * 
- * Defines functions for adding songs to the frontend aand commiting them to the database
+ * Defines functions for adding songs to the frontend and commiting them to the database
  */
 
 
@@ -522,10 +522,9 @@ async function getUserDetails() {
 //post request to spotify api to make playlist in account; note that user_id is different from client_id for authorization
 //to get user_id make get request to 'https://api.spotify.com/v1/me'
 async function createPlaylist() {
-    let date = new Date();
     let user_id = await getUserDetails();
     body = {
-            "name": `Discover Music ${date}`,
+            "name": 'Discover Music',
             "description": "Automatically generated playlist for new music",
             "public": false
            }

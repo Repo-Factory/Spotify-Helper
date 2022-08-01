@@ -25,6 +25,7 @@ class User {
     get_access_token() {return this.access_token}
 }
 
+
 //necessary global to keep track of access_token for API requests
 var currentUser;
 
@@ -75,9 +76,9 @@ async function onPageLoad() {
     let client_secret = get_client_secret();
     let user = new User(client_id, client_secret, access_token=null);
     user = await authorizeUser(user); //try to authorize user on page load
-    currentUser = user; 
-
-    if (user.access_token == null) {
+    currentUser = user;
+    
+    if (user.access_token == null || user.access_token == undefined) {
         document.getElementById("login").style.display = 'block';
         document.getElementById("functions").style.display = 'none';
     }
@@ -93,6 +94,7 @@ async function authorizeUser(user) {
     if (code != null) {
         let access_token = await requestAccessToken(code, user);
         window.history.pushState('', '', redirect_uri);
+        localStorage.setItem('access_token', access_token);
         user.set_access_token(access_token);
         let authorizedUser = user;
         return authorizedUser;

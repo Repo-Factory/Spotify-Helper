@@ -77,6 +77,7 @@ async function onPageLoad() {
     let user = new User(client_id, client_secret, access_token=null);
     user = await authorizeUser(user); //try to authorize user on page load
     currentUser = user;
+
     
     if (user.access_token == null || user.access_token == undefined) {
         document.getElementById("login").style.display = 'block';
@@ -211,6 +212,10 @@ function get_client_id() {
 function get_client_secret() {
     let client_secret = localStorage.getItem("client_secret");
     return client_secret    
+}
+function get_access_token() {
+    let access_token = localStorage.getItem("access_token")
+    return access_token
 }
 
 

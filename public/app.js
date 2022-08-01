@@ -37,7 +37,7 @@ var currentUser;
   */
 
 
-//executed on form submission, sends request to spotify authorize URzl
+//executed on form submission, sends request to spotify authorize URl
 function requestAuthorization() {
     let user = createUser();
     url = buildAuthUrl(user);
@@ -74,8 +74,8 @@ async function onPageLoad() {
     let client_id = get_client_id();
     let client_secret = get_client_secret();
     let user = new User(client_id, client_secret, access_token=null);
-    await authorizeUser(user);
-    currentUser = user;
+    user = await authorizeUser(user); //try to authorize user on page load
+    currentUser = user; 
 
     if (user.access_token == null) {
         document.getElementById("login").style.display = 'block';
@@ -84,12 +84,10 @@ async function onPageLoad() {
     else {
         document.getElementById("functions").style.display = 'block';
         document.getElementById("login").style.display = 'none';
-
-        //getUserDetails();
     }
 }
 
-//cleans URL and requests access token
+//cleans URL and requests access token, if valid request made, sets access token
 async function authorizeUser(user) {
     let code = getCode(); // using URL paramter
     if (code != null) {
@@ -103,7 +101,7 @@ async function authorizeUser(user) {
 }
 
 
-//creates body for token request
+//creates body for token request and returns the token
 async function requestAccessToken(code, user) {
     body = buildBody(code, user);
     json = await callAuthApi(body, user);
@@ -159,9 +157,10 @@ async function callSpotifyApi(method, url, body, access_token) {
     return json
     }
     catch(err) {
-        
+
     }
 }
+
 
 //general api call for postgres requests
 async function callApi(method, url, body) {
@@ -180,6 +179,8 @@ async function callApi(method, url, body) {
         console.log(err);
     }
 }
+
+
 ///////////////Authorize Helpers////////////////
 
 
@@ -328,7 +329,7 @@ async function populateSongs() {
 }
 
 
-//helper for populateSongs()
+//retrieves songs of a given playlist from Spotify
 async function getPlaylistSongs(playlist) {
     let json = await callSpotifyApi('GET', `https://api.spotify.com/v1/playlists/${playlist}/tracks?limit=100`, null, currentUser.access_token);
     return json
@@ -439,7 +440,7 @@ async function getPostgresSongs(url) {
 }
 
 
-//sets off a chain of getting songs from database and then getting recommended songs based on those seeds
+//creates and fills a list with song recommendations based on seed songs randomly picked from songs in postgres database
 async function findNewMusic(playlistIds) {
     let newSongs = [];
     for (let i=0; i < playlistIds.length;i++) {
@@ -503,11 +504,13 @@ function randomNumberBetweenZeroAnd(number) {
  * Part II: With songs recommendations collected, make a new playlist in spotify and add each song to that playlist
  */
 
+
 //retrieves user id which is needed to make a new playlist
 async function getUserDetails() {
     let json = await callSpotifyApi('GET', 'https://api.spotify.com/v1/me', null, currentUser.access_token)
     return json.id
 }
+
 
 //post request to spotify api to make playlist in account; note that user_id is different from client_id for authorization
 //to get user_id make get request to 'https://api.spotify.com/v1/me'

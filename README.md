@@ -38,10 +38,3 @@ As far as the spotify side of things go, you do need a [Spotify For Developers](
 This app has the potential to perform an array of actions but isn't currently full of features. As of now it can display the user's songs and playlists, clone the user's spotify, and - the reason I made it - automatically make a new playlist of recommended songs. It does this by going through every playlist of the user and picking five random songs. These songs are used as "seed tracks" for spotify's recommendation API (limit of 5 songs) to get recommendations (default 20). This app then chooses one of those (20) songs and adds it to a new playlist called Discover Music. So for example if you have 35 playlists it will make a new playlist with 35 songs, one song representing each playlist. This helps me find new music very conveniently which is nice since I'm a musician (I can also unbiasedly say that the recommendations are usually solid).
 
 Although that's the current main focus of the program, because of the easy playlist/song selection (set up in picklists) and the database clone, it's a nice template for some other functionality that could be added on. For one it could be a way to conveniently perform CRUD operations on your songs; for example sometimes I want to delete a bunch of songs but don't want to do it manually. Using this app as a basis, it would be easy to give it an interface to perform such kind of action.
-
-
-#### NOTES ####
-
-One thing I'm not happy to admit is some of the code is a little interdependent because I was new to async/await functions when I started this program. From self-teaching I learned about the use of callback functions but wasn't warned about how they can get messy quick. It's not disgusting but there are some callback chains that I have to dedicate a day to fixing and converting to cleaner async functions. However, the app has cool functionality and the docker setup with postgres is smooth so I'm fine with it being public.
-
-I also have some earlier commits with a spotify developer password I was using while testing but I reset the password and decided to keep the commits
